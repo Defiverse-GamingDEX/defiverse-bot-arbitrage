@@ -12,6 +12,7 @@ import {
   balancer,
   getPoolByPoolId,
   signerAddress,
+  checkAndSetAllowanceForVault,
 } from '@/services/balancer.service';
 import CONFIG from '@/services/config';
 
@@ -36,6 +37,15 @@ class TriangleArbitrage extends Arbitrage {
       const token1 = pool1.tokens[this.getAssetIndex(pool1, symbol1)];
       const token2 = pool2.tokens[this.getAssetIndex(pool2, symbol2)];
       const token3 = pool3.tokens[this.getAssetIndex(pool3, symbol3)];
+
+      for (const token of [token1, token2, token3]) {
+        await checkAndSetAllowanceForVault({
+          token: token,
+          amount: new BigNumber(1000000000).multipliedBy(
+            new BigNumber(10).pow(token.decimals),
+          ),
+        });
+      }
 
       const data = {
         kind: SwapType.SwapExactIn,

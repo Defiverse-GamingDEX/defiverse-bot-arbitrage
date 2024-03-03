@@ -8,6 +8,7 @@ import {
   balancer,
   getPoolByPoolId,
   signerAddress,
+  checkAndSetAllowanceForVault
 } from '@/services/balancer.service';
 import CONFIG from '@/services/config';
 
@@ -31,6 +32,16 @@ class PairArbitrage extends Arbitrage {
       const token1 = pool1.tokens[this.getAssetIndex(pool1, symbol1)];
       const token2 = pool1.tokens[this.getAssetIndex(pool1, symbol2)];
 
+      for (const token of [token1, token2]) {
+        await checkAndSetAllowanceForVault({
+          token: token,
+          amount: new BigNumber(1000000000).multipliedBy(
+            new BigNumber(10).pow(token.decimals),
+          ),
+        });
+      }
+
+
       const data = {
         flashLoanAmount: new BigNumber(pair.minAmount)
           .multipliedBy(new BigNumber(10).pow(token1.decimals))
@@ -43,7 +54,6 @@ class PairArbitrage extends Arbitrage {
         symbols: pair.symbols,
       };
       const profit = await this.getProfit(data);
-      const config = await configurationService.getConfig();
 
       console.log('profit: ', pair.symbols, profit);
       const isGreatThanMinProfit = new BigNumber(profit.profit).gte(

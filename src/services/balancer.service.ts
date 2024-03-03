@@ -5,11 +5,13 @@ import {
   BalancerSdkConfig,
   Network,
 } from '@defiverse/balancer-sdk';
-import { ethers } from 'ethers';
+import { ethers, Contract } from 'ethers';
+import BigNumber from 'bignumber.js';
 import CONFIG from '@/services/config';
 import { NETWORKS } from '@/constants/networks.constant';
+import AbiERC20 from '@/abis/ERC20.json';
 
-const network  = NETWORKS[CONFIG.NETWORK];
+const network = NETWORKS[CONFIG.NETWORK];
 
 const config: BalancerSdkConfig = {
   network: network.CHAIN_ID,
@@ -30,4 +32,35 @@ export const getPoolByPoolId = async (poolId: string) => {
   if (!pool) throw new BalancerError(BalancerErrorCode.POOL_DOESNT_EXIST);
 
   return pool;
+};
+
+export const checkAndSetAllowanceForVault = async ({ token, amount }) => {
+  return await checkAndSetAllowance({
+    token,
+    spender: balancerVault,
+    amount,
+  });
+};
+
+export const checkAndSetAllowance = async ({ token, spender, amount }) => {
+  if (token.address === ethers.constants.AddressZero) {
+    return;
+  }
+
+  const erc20 = new Contract(token.address, AbiERC20, signer);
+  const allowance = await erc20.allowance(signerAddress, spender);
+  console.log(`[${token.symbol}] => allowance: ${allowance.toString()}`);
+
+  if (amount.gt(allowance.toString())) {
+    const approveTx = await erc20.approve(
+      spender,
+      ethers.constants.MaxUint256,
+      {
+        gasPrice: await signer.provider.getGasPrice(),
+      },
+    );
+    return await approveTx.wait();
+  }
+
+  return true;
 };
