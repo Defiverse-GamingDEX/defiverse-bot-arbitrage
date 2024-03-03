@@ -1,8 +1,14 @@
 import { QuerySimpleFlashSwapResponse, Swaps } from '@defiverse/balancer-sdk';
+import BigNumber from 'bignumber.js';
+
 import lockfile from 'lockfile';
 import { configurationService, logger } from '@/services/index.service';
 import { Arbitrage, PairPool } from './base.arbitrage';
-import { balancer, getPoolByPoolId, signerAddress } from '@/services/balancer.service';
+import {
+  balancer,
+  getPoolByPoolId,
+  signerAddress,
+} from '@/services/balancer.service';
 import CONFIG from '@/services/config';
 
 class PairArbitrage extends Arbitrage {
@@ -19,34 +25,50 @@ class PairArbitrage extends Arbitrage {
 
       const pool1 = await getPoolByPoolId(pair.poolIds[0]);
       const pool2 = await getPoolByPoolId(pair.poolIds[1]);
-      const pool1Tokens = pool1.tokens;
-      const pool2Tokens = pool2.tokens;
-      for (const token1 of pool1Tokens) {
-        for (const token2 of pool2Tokens) {
-          const data = {
-            flashLoanAmount: CONFIG.PAIR_ARBITRAGE.AMOUNT,
-            poolIds: [pool1.id, pool2.id],
-            assets: [token1.address, token2.address],
-          };
-          const profit = await this.getProfit(data);
-          const config = await configurationService.getConfig();
 
-          if (
-            profit.isProfitable &&
-            parseFloat(profit.profits[token1.address]) > config.minProfit
-          ) {
-            logger.info(
-              `Expected: Pair ${token1.symbol}-${token2.symbol} has profit ${profit.profits[token1.address]}`,
-            );
-            const tx = await this.trade(data);
-            if (tx) {
-              await this.recordTransaction(
-                `${token1.symbol}-${token2.symbol}`,
-                profit.profits[token1.address],
-                tx,
-              );
-            }
-          }
+      const [symbol1, symbol2] = pair.symbols.split('-');
+
+      const token1 = pool1.tokens[this.getAssetIndex(pool1, symbol1)];
+      const token2 = pool1.tokens[this.getAssetIndex(pool1, symbol2)];
+
+      const data = {
+        flashLoanAmount: new BigNumber(pair.minAmount)
+          .multipliedBy(new BigNumber(10).pow(token1.decimals))
+          .toString(),
+        poolIds: [pool1.id, pool2.id],
+        assets: [token1.address, token2.address],
+        milestone: new BigNumber(pair.milestone)
+          .multipliedBy(new BigNumber(10).pow(token1.decimals))
+          .toString(),
+        symbols: pair.symbols,
+      };
+      const profit = await this.getProfit(data);
+      const config = await configurationService.getConfig();
+
+      console.log('profit: ', pair.symbols, profit);
+      const isGreatThanMinProfit = new BigNumber(profit.profit).gte(
+        new BigNumber(pair.minProfit).multipliedBy(
+          new BigNumber(10).pow(token1.decimals),
+        ),
+      );
+
+      if (profit.isProfitable && isGreatThanMinProfit) {
+        const profitToEth = new BigNumber(profit.profit).dividedBy(
+          new BigNumber(10).pow(token1.decimals),
+        );
+
+        logger.info(
+          `Expected: Pair ${pair.symbols} has profit ${profitToEth.toString()} ${token1.symbol}`,
+        );
+        const tx = await this.trade(data);
+        if (tx) {
+          await this.recordTransaction(
+            `${token1.symbol}-${token2.symbol}`,
+            profit.profits[token1.address],
+            tx,
+            token1,
+            profitToEth,
+          );
         }
       }
     } catch (error) {
@@ -64,22 +86,65 @@ class PairArbitrage extends Arbitrage {
     poolIds,
     assets,
     flashLoanAmount,
+    milestone,
+    symbols,
   }: {
     flashLoanAmount: string;
     poolIds: Array<string>;
     assets: Array<string>;
-  }): Promise<QuerySimpleFlashSwapResponse> {
+    milestone: string;
+    symbols?: string;
+  }): Promise<
+    QuerySimpleFlashSwapResponse & { profit: string; amount: string }
+  > {
     try {
-      const response = await balancer.swaps.querySimpleFlashSwap({
-        flashLoanAmount,
-        poolIds,
-        assets,
-      });
-      return response;
+      let results = {
+        profit: 0,
+        profits: {},
+      };
+
+      let amount = flashLoanAmount + 0;
+      const steps = [...Array(CONFIG.PAIR_ARBITRAGE.RETRY).keys()];
+      for (const step of steps) {
+        try {
+          amount = new BigNumber(flashLoanAmount)
+            .plus(new BigNumber(milestone).multipliedBy(step))
+            .toString();
+
+          const { profits } = await balancer.swaps.querySimpleFlashSwap({
+            flashLoanAmount: amount,
+            poolIds,
+            assets,
+          });
+          const profit = this.calcProfit([
+            profits[assets[0]],
+            profits[assets[1]],
+          ]);
+
+          if (profit > results.profit) {
+            results.profit = profit;
+            results.profits = profits;
+          }
+        } catch (error) {
+          logger.error(
+            error?.message || error,
+            `${this.name}.getProfit ${symbols} => amount: ${amount}`,
+          );
+        }
+      }
+
+      return {
+        profits: results.profits,
+        isProfitable: results.profit > 0,
+        profit: String(results.profit),
+        amount: amount,
+      };
     } catch (error) {
-      // logger.error(error, `${this.name}.getProfit`);
+      logger.error(error, `${this.name}.getProfit ${symbols}`);
       return {
         isProfitable: false,
+        amount: flashLoanAmount,
+        profit: '0',
         profits: {},
       };
     }

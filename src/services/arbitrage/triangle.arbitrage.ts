@@ -1,14 +1,11 @@
 import {
   BatchSwapStep,
-  PoolToken,
-  PoolWithMethods,
   QuerySimpleFlashSwapResponse,
   SwapType,
   Swaps,
 } from '@defiverse/balancer-sdk';
 import BigNumber from 'bignumber.js';
 import lockfile from 'lockfile';
-import { sum } from 'lodash';
 import { configurationService, logger } from '@/services/index.service';
 import { Arbitrage, PairType } from './base.arbitrage';
 import {
@@ -21,16 +18,6 @@ import CONFIG from '@/services/config';
 class TriangleArbitrage extends Arbitrage {
   protected lockedFilePath: string = 'triangle.arbitrage.lock';
   protected name: string = 'TriangleArbitrage';
-
-  private getAssetIndex(pool: PoolWithMethods, symbol: string) {
-    const index = pool.tokens.findIndex(
-      (item: PoolToken) => item.symbol === symbol,
-    );
-    if (index < 0) {
-      throw new Error(`Can not find ${symbol} in pool: ${pool.id}`);
-    }
-    return index;
-  }
 
   async handlePair(pair: PairType) {
     try {
@@ -87,6 +74,7 @@ class TriangleArbitrage extends Arbitrage {
         milestone: new BigNumber(pair.milestone)
           .multipliedBy(new BigNumber(10).pow(token1.decimals))
           .toString(),
+        symbols: pair.symbols,
       };
 
       const profit = await this.getProfit(data);
@@ -99,15 +87,24 @@ class TriangleArbitrage extends Arbitrage {
       );
 
       if (profit.isProfitable && isGreatThanMinProfit) {
+        const profitToEth = new BigNumber(profit.profit).dividedBy(
+          new BigNumber(10).pow(token1.decimals),
+        );
         logger.info(
-          `Expected: Pair ${pair.symbols} has profit ${profit.profit}`,
+          `Expected: Pair ${pair.symbols} has profit ${profitToEth.toString()} ${token1.symbol}`,
         );
         const tx = await this.trade({
           ...data,
           profit,
         });
         if (tx) {
-          await this.recordTransaction(`${pair.symbols}`, profit.profit, tx);
+          await this.recordTransaction(
+            `${pair.symbols}`,
+            profit.profit,
+            tx,
+            token1,
+            profitToEth,
+          );
         }
       }
     } catch (error) {
@@ -125,22 +122,20 @@ class TriangleArbitrage extends Arbitrage {
     return Number(delta) * -1;
   }
 
-  private calcProfit(profits: string[]) {
-    return sum(profits);
-  }
-
   async getProfit({
     kind,
     assets,
     swaps,
     funds,
     milestone,
+    symbols,
   }: {
     kind: SwapType;
     swaps: BatchSwapStep[];
     assets: Array<string>;
     funds: Object;
     milestone: string;
+    symbols?: string;
   }): Promise<
     QuerySimpleFlashSwapResponse & { profit: string; amount: string }
   > {
@@ -189,7 +184,10 @@ class TriangleArbitrage extends Arbitrage {
             results.profits = profits;
           }
         } catch (error) {
-          logger.error(error, `${this.name}.getProfit => amount: ${swaps[0].amount}`);
+          logger.error(
+            error?.message || error,
+            `${this.name}.getProfit ${symbols} => amount: ${swaps[0].amount}`,
+          );
         }
       }
 
@@ -200,12 +198,12 @@ class TriangleArbitrage extends Arbitrage {
         amount: swaps[0].amount,
       };
     } catch (error) {
-      logger.error(error, `${this.name}.getProfit`);
+      logger.error(error, `${this.name}.getProfit ${symbols}`);
       return {
         isProfitable: false,
         profits: {},
         profit: '0',
-        amount: '0',
+        amount: swaps[0].amount,
       };
     }
   }

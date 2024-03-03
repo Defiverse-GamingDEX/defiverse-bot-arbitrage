@@ -1,9 +1,12 @@
 import {
   BatchSwapStep,
   QuerySimpleFlashSwapResponse,
+  PoolToken,
+  PoolWithMethods,
   SwapType,
 } from '@defiverse/balancer-sdk';
 import { BytesLike } from 'ethers';
+import { sum } from 'lodash';
 import lockfile from 'lockfile';
 import { logger, telegramService } from '../index.service';
 import { TransactionModel } from '@/models';
@@ -11,6 +14,10 @@ import { balancerVault, signer } from '@/services/balancer.service';
 import { sleep } from '@/utils/common.util';
 
 export type PairPool = {
+  symbols: string;
+  minProfit: number;
+  minAmount: number;
+  milestone: number;
   poolIds: Array<string>;
 };
 
@@ -92,6 +99,16 @@ export abstract class Arbitrage {
     }
   }
 
+  protected getAssetIndex(pool: PoolWithMethods, symbol: string) {
+    const index = pool.tokens.findIndex(
+      (item: PoolToken) => item.symbol === symbol,
+    );
+    if (index < 0) {
+      throw new Error(`Can not find ${symbol} in pool: ${pool.id}`);
+    }
+    return index;
+  }
+
   protected async sendTransaction(data: BytesLike) {
     const receipt = await (
       await signer.sendTransaction({
@@ -115,10 +132,16 @@ export abstract class Arbitrage {
     } while (locked);
   }
 
+  protected calcProfit(profits: string[]) {
+    return sum(profits);
+  }
+
   protected async recordTransaction(
     pair: string,
     profit: String,
     transactionHash: string,
+    token1?: any,
+    profitToEth?: any,
   ) {
     await TransactionModel.create({
       pair,
@@ -126,10 +149,10 @@ export abstract class Arbitrage {
       transactionHash,
     });
     logger.info(
-      `Actual: Arbitrage ${pair} with profit ${profit} TransactionHash: ${transactionHash}`,
+      `Actual: Arbitrage ${pair} with profit ${profitToEth} ${token1.symbol} TransactionHash: ${transactionHash}`,
     );
     telegramService.sendMessage(
-      `Arbitrage ${pair} with profit ${profit} TransactionHash: ${transactionHash}`,
+      `Arbitrage ${pair} with profit  ${profitToEth} ${token1.symbol} TransactionHash: ${transactionHash}`,
     );
   }
 }

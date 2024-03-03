@@ -1,11 +1,60 @@
-#### Arbitrage
+# Arbitrage
 
-Diagram: <https://www.planttext.com/api/plantuml/png/pLN1Rjim3BtdAmYVDg05qXs3eMZQhCE07Ggijs47MgPj8R9aoFAo_Fr89dOIf-rQR8VbuDYY-4Y-Hr4tNSAO-iP1zXYn8BZTmZBcDaMi-2Cak7TXayrcQ5A8a2sBnleCi8EbBEZdh6K8QsoBFZ4CEQeYDkAi6n_OEYposkdk5IRCiQDnvoe_tN3liAiraRlWEIjp05KJMmR3gUEdNwP6pqMS-GsMqM_cGcWX-yfFhXG0-nHyt-GKuMe-d_C3ie_vzNT-_w4RgXZw5hu9TO1xjgols097lC3bzRJu1IZVa7CzVSSka6g2D51cGjEWBpe5chWEQAjy0HLnNEUWHHixI06IQfTl0Q5hoTZI6l2KDY6kHwnL3fTFPHGfzT6FU13y4oYxb0uy7S9dQda-t-Eb1NoMpDNnJMvtaJ0HUxfWrb1QHuEx3xpkg4p30i1ZW0RN15qVcTiQav3ChxRZsjns7rzeosd7tE1Blb30F-GsRRm56A53f6merQ4GWHvYA6rw9w7c5nhnQlVtuVqn_1HhY35jqXrrRRI6k8nIWod_ns1Jfr7miwFoOWRd4hnUBDOAdUaT9kbkhpaB4I_ezMLNJGfhyY8IWcVld_kL2zWGur0XWdLzlijH72e-poN9DZqG9iH8PXhlbPBAgHA21TS4NzeAIfvtAgdrjkcR2Uxp9-fDNDLaraBKfYPfKWru84tOS1WhDQ0_pkxvh5xLi4M0KYShZiDUlyVP_myRzppM_z2pelWuLhXnGYn6oOzckWm8tt486_nVQCzR3nV3E7ErxG_uqiceDuSKfNqH_CaDCTktj5n2ygUlD_pa6tp6lzy0>
+Description: In this repo, it supports pair arbitrage and triangle arbitrage. Pair Arbitrage is an arbitrage opportunity that appears between two currencies in two pools that don’t have equivalent conversion rates. Triangle Arbitrage is an arbitrage opportunity that appears between three currencies that don’t have equivalent conversion rates
 
-# How to start
+## Prerequisite:
+- Nodejs(Library Expressjs)
+- Postgres database: store transactions, config, actions
+- Telegram: send command to backend and receive arbitrage information
 
-Should change .env value and src/pairs.json file to run
 
-# How to find pair tokens
+## Basic Tutorial
+In this tutorial, we will be going over how to create and run a arbitrage bot for the Defiverse network.
 
-Run `yarn scan-arbitrage` to find pair tokens or triangle tokens for arbitrage
+1. Prepare the `.env` file which copied from `.default.env`
+    - PORT: is port of arbitrage. 
+    - INIT_DB: will init all tables(in the first time you run), or will drop all tables if it already existed and create again.
+    - DB_URI: is uri of database
+    - TELEGRAM_TOKEN: is telegram token
+    - SIGNER_PRIVATE_KEY: is private key of your account that you use to sign and send transaction
+    - SIGNER_ADDRESS: is your account address that you use to sign and send transaction
+    - VAULT_SC_ADDRESS: is the Vault smart contract address
+    - NETWORK: the network which our bot will run. There are two networks, we can config
+        + DEFIVERSE_TESTNET: the network is for the defiverse testnet
+        + DEFIVERSE: the network is for the defiverse mainnet
+2. Prepare pairs for trading. There are two files, we need to update. 
+    - `defi-mainnet.pair.json`: The file is for the defiverse mainnet.
+    - `defi-testnet.pair.json`: The file is for the defiverse testnet.
+
+    ##### The content in the files will contain information related to `RETRY`, `PAIR_ARBITRAGE` and `TRIANGLE_ARBITRAGE`.
+
+    - `RETRY`: the retry limit that we will try to get the maximum profit
+    - `PAIR_ARBITRAGE`, we can configure the flash amount that we use to trade, and the list of pair pools
+    - `TRIANGLE_ARBITRAGE`, we can configure the amount that we use to trade, and the list of pool and token symbols. We will contain some information as below:
+        + `minProfit`: the minimum profit that we want to earn. The profit will be calculated with the first token. For example: the triangle "USDC-GDT-WOAS", we configure minProfit 2,  which means we will earn the minimum of 2 USDC
+        + `milestone`: the milestone we will increase after retrying to get the maximum profit
+        + `symbols`: There are three tokens to make the triangle.
+        + `pairs`: There are three pool ids to make the triangle.Please note the orders of the pairs; they should match the symbol order. For example: USDC-GDT-WOAS we will have three pairs with the order like this
+            ```
+                1/ "0x26cdeaf40cf9a83bb7436b560d150c1d5d98b87900020000000000000000000a" // USDC-GDT
+                2/ "0xaa01a32965a072082dac7169b4c9457ce1508be5000200000000000000000001" // GDT-WOAS
+                3/ "0xe815154dc2bb9cceee8054b01e99850b2a8c0d1e000200000000000000000002" // WOAS-USDC
+            ```
+
+
+3. Install all dependencies:
+
+    ```
+    yarn install
+    ```
+
+4. Start our project
+
+    ```
+    yarn start
+    ```
+
+5. Go telegram 
+    - Create a group on the Telegram
+    - Add the telegram bot which have the token we are setting up before
+    - Run the command in the Telegram message `/start`

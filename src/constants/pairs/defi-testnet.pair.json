@@ -1,7 +1,18 @@
 {
   "PAIR_ARBITRAGE": {
-    "AMOUNT": "10000",
-    "PAIRS": []
+    "RETRY": 5,
+    "PAIRS": [
+      {
+        "minProfit": 2,
+        "milestone": 0.5,
+        "minAmount": 0.1,
+        "symbols": "USDC-ETH",
+        "poolIds": [
+          "0xd5692416b31c0d71f1828c368f85fb0db973907a00020000000000000000001b",
+          "0x229cd3ba52f8c3a8d7012b3f60e7c4b2681c89fc000200000000000000000015"
+        ]
+      }
+    ]
   },
   "TRIANGLE_ARBITRAGE": {
     "RETRY": 5,
