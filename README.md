@@ -57,4 +57,8 @@ In this tutorial, we will be going over how to create and run a arbitrage bot fo
 5. Go telegram 
     - Create a group on the Telegram
     - Add the telegram bot which have the token we are setting up before
+        ##### Telegram bot has been used for testing:
+        - Telegram token: 6449507248:AAH_OnufkOhRU8hHUJ5h31rSe6S2_PZfdTg
+        - Name: DefiverseArbitrageBot
+        - Link: t.me/DefiverseArbitrageBot
     - Run the command in the Telegram message `/start`
