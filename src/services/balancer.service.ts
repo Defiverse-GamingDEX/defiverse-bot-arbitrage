@@ -52,11 +52,17 @@ export const checkAndSetAllowance = async ({ token, spender, amount }) => {
   console.log(`[${token.symbol}] => allowance: ${allowance.toString()}`);
 
   if (amount.gt(allowance.toString())) {
+    const estimation = await erc20.estimateGas.approve(
+      spender,
+      ethers.constants.MaxUint256,
+    );
+    console.log('gas estimation: ', estimation.toString());
+
     const approveTx = await erc20.approve(
       spender,
       ethers.constants.MaxUint256,
       {
-        gasPrice: await signer.provider.getGasPrice(),
+        gasLimit: estimation.toString(),
       },
     );
     return await approveTx.wait();

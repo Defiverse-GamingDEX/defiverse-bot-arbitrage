@@ -5,7 +5,6 @@ export const NETWORKS = {
   },
   DEFIVERSE: {
     CHAIN_ID: 16116,
-    RPC_URL: 'https://rpc.defi-verse.org/',
-    VAULT: "" // TODO: input here
+    RPC_URL: 'https://rpc.defi-verse.org',
   },
 };

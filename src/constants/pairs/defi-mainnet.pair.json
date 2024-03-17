@@ -1,10 +1,43 @@
 {
   "PAIR_ARBITRAGE": {
-    "AMOUNT": "10000",
     "PAIRS": []
   },
   "TRIANGLE_ARBITRAGE": {
-    "AMOUNT": "100",
-    "PAIRS": []
+    "RETRY": 5,
+    "PAIRS": [
+      {
+        "minProfit": 0.0002,
+        "milestone": 0.01,
+        "minAmount": 0.002,
+        "symbols": "WBTC-WETH-WOAS",
+        "pairs": [
+          "0x6e338b9dc0056cf26240f1d21273650bebee7a3a000200000000000000000008",
+          "0xaa497b8ddd92f3a8a82bca33f8adfc7d022d90ba000200000000000000000004",
+          "0x1f712f57a0ad1dbde1accb4d60e3d62e2f51ff60000200000000000000000000"
+        ]
+      },
+      {
+        "minProfit": 0.007,
+        "milestone": 0.35,
+        "minAmount": 0.07,
+        "symbols": "WETH-WOAS-WBTC",
+        "pairs": [
+          "0xaa497b8ddd92f3a8a82bca33f8adfc7d022d90ba000200000000000000000004",
+          "0x1f712f57a0ad1dbde1accb4d60e3d62e2f51ff60000200000000000000000000",
+          "0x6e338b9dc0056cf26240f1d21273650bebee7a3a000200000000000000000008"
+        ]
+      },
+      {
+        "minProfit": 20,
+        "milestone": 1000,
+        "minAmount": 200,
+        "symbols": "WOAS-WBTC-WETH",
+        "pairs": [
+          "0x1f712f57a0ad1dbde1accb4d60e3d62e2f51ff60000200000000000000000000",
+          "0x6e338b9dc0056cf26240f1d21273650bebee7a3a000200000000000000000008",
+          "0xaa497b8ddd92f3a8a82bca33f8adfc7d022d90ba000200000000000000000004"
+        ]
+      }
+    ]
   }
 }

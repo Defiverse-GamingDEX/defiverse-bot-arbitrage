@@ -161,7 +161,7 @@ class TriangleArbitrage extends Arbitrage {
         try {
           swaps[0].amount = new BigNumber(swaps[0].amount)
             .plus(new BigNumber(milestone).multipliedBy(step))
-            .toString();
+            .toFixed(0);
 
           const deltas =
             await balancer.contracts.vault.callStatic.queryBatchSwap(
@@ -188,6 +188,11 @@ class TriangleArbitrage extends Arbitrage {
             profits[assets[1]],
             profits[assets[2]],
           ]);
+
+          logger.info(
+            `profit: ${profit}`,
+            `${this.name}.getProfit ${symbols} => amount: ${swaps[0].amount}`,
+          );
 
           if (profit > results.profit) {
             results.profit = profit;
